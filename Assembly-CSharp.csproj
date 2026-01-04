@@ -60,8 +60,10 @@
     <Analyzer Include="F:\Programacion\Unity\2022.3.62f3\Editor\Data\Tools\Unity.SourceGenerators\Unity.Properties.SourceGenerator.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\scrips\el scrip de la pistola.cs" />
     <Compile Include="Assets\scrips\Playermovimiento.cs" />
     <Compile Include="Assets\scrips\camara.cs" />
+    <Compile Include="Assets\scrips\el scrip de la pistola por si las dudas.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

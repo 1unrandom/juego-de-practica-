@@ -1,21 +1,16 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting.Dependencies.Sqlite;
 using UnityEngine;
-using UnityEngine.UIElements;
 using UnityEngine.UI;
 
 public class Playermovimiento : MonoBehaviour
 {
-    //referencias
-    [Header("Refencias")]
-
+    [Header("Referencias")]
     [SerializeField] private Transform camara;
     private CharacterController controlador;
-// correr
-    [Header("Movimiento")]
 
+    [Header("Movimiento")]
     [SerializeField] private float velocidadMovimiento = 5f;
     [SerializeField] private float velocidadcorrer = 8f;
     [SerializeField] private float estaminaMax = 100f;
@@ -23,140 +18,102 @@ public class Playermovimiento : MonoBehaviour
     [SerializeField] private float recuperacionPorSegundo = 15f;
     [SerializeField] private float delayRecuperacion = 0.5f;
     [SerializeField] private UnityEngine.UI.Image barraEstaminaFill;
+
     private float estaminaActual;
     private float tiempoSinCorrer = 0;
 
+    [Header("Gravedad y Salto")]
+    [SerializeField] private float Gravedad = -25f;
+    [SerializeField] private float fuerzaSalto = 2.5f;
+    [SerializeField] private float saltoDelayConfig = 0f;
+    [SerializeField] private float coyoteTimeMax = 0.2f; // <--- TIEMPO DE MARGEN PARA SALTAR EN BAJADAS
 
-
-
-
-    //gravedad
-    [Header("Gravedad")]
-    [SerializeField] private float Gravedad = -9f;
+    private float coyoteTimeCounter; // Contador interno
+    private float tiempoSiguienteSalto = 0f;
     private Vector3 velocidadVertical;
-
-
-
-
-
-
-
-
-
-    void Start()
-    {
-        
-
-
-
-    }
 
     private void Awake()
     {
         controlador = GetComponent<CharacterController>();
-
-
-        if (controlador == null && Camera.main != null)
+        if (camara == null && Camera.main != null)
             camara = Camera.main.transform;
 
         estaminaActual = estaminaMax;
-
-
     }
-
 
     void Update()
     {
-        MoverJugadorEnPlano();
-        AplicarGravedad();
+        MoverJugador();
+        ManejarEstamina();
     }
-    private void MoverJugadorEnPlano()
-     {
-        ///--------------------------
-        ////CAMINAR CON EL PERSONAJE
-        ///--------------------------
 
-        // captura las teclasa (AWSD y flechas)
+    private void MoverJugador()
+    {
         float ValorHorizontal = Input.GetAxisRaw("Horizontal");
         float ValorVertical = Input.GetAxisRaw("Vertical");
 
-        //calcula hacia donde mira la camara  solo en eje (Adelante y Atras) y (Derecha y Izquierda)
+        bool estaCorriendo = Input.GetKey(KeyCode.LeftShift) && estaminaActual > 0 && ValorVertical > 0;
+        float velocidadFinal = estaCorriendo ? velocidadcorrer : velocidadMovimiento;
+
         Vector3 adelanteCamara = camara.forward;
         Vector3 derechaCamara = camara.right;
-
-        //Eliminamos eje y por que no lo necesitamos
         adelanteCamara.y = 0f;
         derechaCamara.y = 0f;
-
-        //Normaliza para no tener valores diferentes
         adelanteCamara.Normalize();
         derechaCamara.Normalize();
 
-        //combina las direcciones para tener flechas diagonales
         Vector3 direccionplano = (derechaCamara * ValorHorizontal + adelanteCamara * ValorVertical);
-
-        //evita aumentar la velocidad al caminar en diagonal
         if (direccionplano.sqrMagnitude > 0.0001f)
             direccionplano.Normalize();
-        //le da velocidad para dependa del tiempo y no de los FPS
-        Vector3 desplazamientoXZ = direccionplano * (velocidadMovimiento * Time.deltaTime);
 
+        Vector3 movimientoHorizontal = direccionplano * velocidadFinal;
 
-        controlador.Move(desplazamientoXZ);
-
-        ///------------------------
-        ///CORRER CON EL PERSONAJE
-        ///------------------------
-
-        bool seEstaMoviendo = direccionplano.sqrMagnitude > 0.0001f;
-        bool botonCorrer = Input.GetKey(KeyCode.LeftShift);
-        bool puedoCorrer = estaminaActual > 0.01f;
-        bool corriendo =botonCorrer && seEstaMoviendo && puedoCorrer;
-
-        if (corriendo)
+        // --- LÓGICA DE COYOTE TIME (Para saltar en bajadas) ---
+        if (controlador.isGrounded)
         {
-            estaminaActual -= consumoPorSegundo * Time.deltaTime;
-            tiempoSinCorrer = 0f;
-
+            coyoteTimeCounter = coyoteTimeMax; // Resetear el margen si estamos tocando suelo
+            if (velocidadVertical.y < 0)
+            {
+                velocidadVertical.y = -2f; // Fuerza hacia abajo para no "flotar" en rampas
+            }
         }
         else
         {
-            tiempoSinCorrer += Time.deltaTime;
-            if (tiempoSinCorrer >= delayRecuperacion)
-            {
-                estaminaActual += recuperacionPorSegundo * Time.deltaTime;
-            }
+            coyoteTimeCounter -= Time.deltaTime; // Empezar a descontar el margen si estamos en el aire
         }
-        estaminaActual = Math.Clamp(estaminaActual, 0f, estaminaMax);
-        if(barraEstaminaFill != null)
+
+        // --- LÓGICA DE SALTO ---
+        // Ahora usamos coyoteTimeCounter > 0 en lugar de controlador.isGrounded
+        if (Input.GetButtonDown("Jump") && coyoteTimeCounter > 0f && Time.time >= tiempoSiguienteSalto)
         {
-            barraEstaminaFill.fillAmount = estaminaActual / estaminaMax;
+            velocidadVertical.y = Mathf.Sqrt(fuerzaSalto * -2f * Gravedad);
+            tiempoSiguienteSalto = Time.time + saltoDelayConfig;
+            coyoteTimeCounter = 0f; // Gastamos el salto inmediatamente
         }
 
-        float velocidadActual = corriendo ? velocidadcorrer : velocidadMovimiento;
-
-        
-
-
-
-
-
-
-    }
-
-    private void AplicarGravedad()
-    {
         velocidadVertical.y += Gravedad * Time.deltaTime;
-        controlador.Move(velocidadVertical * Time.deltaTime);
 
-        if(controlador.isGrounded && velocidadVertical.y < 0)
+        // MOVIMIENTO FINAL
+        Vector3 movimientoFinal = (movimientoHorizontal + velocidadVertical) * Time.deltaTime;
+        controlador.Move(movimientoFinal);
+
+        if (estaCorriendo && direccionplano.magnitude > 0)
         {
-            velocidadVertical.y = -2f;
-
+            estaminaActual -= consumoPorSegundo * Time.deltaTime;
+            tiempoSinCorrer = 0;
         }
-
-
     }
 
+    private void ManejarEstamina()
+    {
+        if (tiempoSinCorrer < delayRecuperacion)
+            tiempoSinCorrer += Time.deltaTime;
+        else if (estaminaActual < estaminaMax)
+            estaminaActual += recuperacionPorSegundo * Time.deltaTime;
 
+        estaminaActual = Mathf.Clamp(estaminaActual, 0, estaminaMax);
+
+        if (barraEstaminaFill != null)
+            barraEstaminaFill.fillAmount = estaminaActual / estaminaMax;
+    }
 }

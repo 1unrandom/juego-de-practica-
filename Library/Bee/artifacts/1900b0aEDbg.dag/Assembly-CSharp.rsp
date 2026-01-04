@@ -354,6 +354,8 @@
 -analyzer:"F:/Programacion/Unity/2022.3.62f3/Editor/Data/Tools/Unity.SourceGenerators/Unity.Properties.SourceGenerator.dll"
 -analyzer:"F:/Programacion/Unity/2022.3.62f3/Editor/Data/Tools/Unity.SourceGenerators/Unity.SourceGenerators.dll"
 "Assets/scrips/camara.cs"
+"Assets/scrips/el scrip de la pistola por si las dudas.cs"
+"Assets/scrips/el scrip de la pistola.cs"
 "Assets/scrips/Playermovimiento.cs"
 -langversion:9.0
 /deterministic
